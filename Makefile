@@ -1,0 +1,50 @@
+# Football Team Manager - Makefile
+
+.PHONY: build up down restart logs shell db-push debug-up debug-down debug-logs help
+
+help:
+	@echo "Comandi disponibili:"
+	@echo "  make build    - Costruisce l'immagine Docker"
+	@echo "  make up       - Avvia i container in background"
+	@echo "  make down     - Ferma e rimuove i container"
+	@echo "  make restart  - Riavvia i container"
+	@echo "  make logs     - Visualizza i log in tempo reale"
+	@echo "  make shell    - Apre una shell interattiva nel container"
+	@echo "  make db-push  - Sincronizza manualmente lo schema del database"
+	@echo "  make debug-up - Avvia il container in modalita debug (porta 9229)"
+	@echo "  make debug-down - Ferma il container di debug"
+	@echo "  make debug-logs - Visualizza i log del container di debug"
+	@echo "  make clean    - Rimuove container e volumi (ATTENZIONE: cancella i dati)"
+
+build:
+	docker compose build
+
+up:
+	docker compose up -d
+
+down:
+	docker compose down
+
+restart:
+	docker compose restart
+
+logs:
+	docker compose logs -f
+
+shell:
+	docker compose exec app sh
+
+db-push:
+	docker compose exec app npx prisma db push
+
+debug-up:
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --build
+
+debug-down:
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml down
+
+debug-logs:
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml logs -f
+
+clean:
+	docker compose down -v --rmi all

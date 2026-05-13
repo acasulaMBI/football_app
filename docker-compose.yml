@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: football-app
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=file:/app/data/dev.db
+      - NODE_ENV=production
+      - PORT=4000
+    volumes:
+      - football-data:/app/data
+    restart: always
+
+volumes:
+  football-data:

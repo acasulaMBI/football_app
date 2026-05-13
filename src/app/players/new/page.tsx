@@ -1,0 +1,95 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function NewPlayerPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      role: formData.get("role"),
+      number: formData.get("number"),
+      dateOfBirth: formData.get("dateOfBirth"),
+    };
+
+    try {
+      const res = await fetch("/api/players", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        router.push("/players");
+        router.refresh();
+      } else {
+        alert("Errore durante il salvataggio.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Errore di rete.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="page-container">
+      <header className="page-header">
+        <Link href="/players" className="back-button">← Annulla</Link>
+        <h1>Nuovo Giocatore</h1>
+        <div style={{ width: '60px' }}></div>
+      </header>
+
+      <section className="form-section">
+        <form onSubmit={handleSubmit} className="modern-form">
+          <div className="form-group">
+            <label htmlFor="firstName">Nome *</label>
+            <input type="text" id="firstName" name="firstName" required className="form-input" />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="lastName">Cognome *</label>
+            <input type="text" id="lastName" name="lastName" required className="form-input" />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="role">Ruolo</label>
+            <select id="role" name="role" className="form-input" defaultValue="UNKNOWN">
+              <option value="UNKNOWN">Sconosciuto</option>
+              <option value="GOALKEEPER">Portiere</option>
+              <option value="DEFENDER">Difensore</option>
+              <option value="MIDFIELDER">Centrocampista</option>
+              <option value="FORWARD">Attaccante</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="number">Numero di Maglia</label>
+            <input type="number" id="number" name="number" min="1" max="99" className="form-input" />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="dateOfBirth">Data di Nascita</label>
+            <input type="date" id="dateOfBirth" name="dateOfBirth" className="form-input" />
+          </div>
+
+          <button type="submit" className="submit-button" disabled={loading}>
+            {loading ? "Salvataggio..." : "Salva Giocatore"}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}

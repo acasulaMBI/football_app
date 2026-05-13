@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    container_name: football-app-dev
+    ports:
+      - "4000:4000"
+      - "9229:9229"
+    environment:
+      - DATABASE_URL=file:/app/data/dev.db
+      - NODE_ENV=development
+      - PORT=4000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - NODE_OPTIONS=--inspect=0.0.0.0:9229
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - football-data-dev:/app/data
+    command: sh -c "npx prisma db push --accept-data-loss && npm run dev -- --hostname 0.0.0.0 --port 4000"
+    restart: unless-stopped
+
+volumes:
+  football-data-dev:

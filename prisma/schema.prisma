@@ -1,0 +1,82 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Player {
+  id           String       @id @default(uuid())
+  firstName    String
+  lastName     String
+  role         String       @default("UNKNOWN") // GOALKEEPER, DEFENDER, MIDFIELDER, FORWARD
+  number       Int?
+  dateOfBirth  DateTime?
+  callUps      CallUp[]
+  eventsAsMain MatchEvent[] @relation("MainPlayer")
+  eventsAsAsst MatchEvent[] @relation("AssistPlayer")
+  eventsAsSub  MatchEvent[] @relation("SubOutPlayer")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Tournament {
+  id        String   @id @default(uuid())
+  name      String
+  season    String
+  matches   Match[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Match {
+  id         String       @id @default(uuid())
+  date       DateTime
+  opponent   String
+  location   String       @default("HOME") // HOME, AWAY
+  duration   Int          @default(90) // Total duration in minutes
+  tournament Tournament?  @relation(fields: [tournamentId], references: [id])
+  tournamentId String?
+  callUps    CallUp[]
+  events     MatchEvent[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model CallUp {
+  id        String       @id @default(uuid())
+  match     Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId   String
+  player    Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  String
+  status    String       @default("BENCH") // STARTER, BENCH, NOT_CALLED
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([matchId, playerId])
+}
+
+model MatchEvent {
+  id           String    @id @default(uuid())
+  match        Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId      String
+  minute       Int
+  type         String    // GOAL, SUBSTITUTION, YELLOW_CARD, RED_CARD, OPPONENT_GOAL
+  
+  // Optional for opponent goals, mandatory for all team events
+  player       Player?   @relation("MainPlayer", fields: [playerId], references: [id])
+  playerId     String?
+  
+  // Specifics for GOAL
+  goalType     String?   // RIGHT_FOOT, LEFT_FOOT, HEADER, PENALTY, FREE_KICK, OTHER
+  assist       Player?   @relation("AssistPlayer", fields: [assistId], references: [id])
+  assistId     String?
+  
+  // Specifics for SUBSTITUTION
+  subOut       Player?   @relation("SubOutPlayer", fields: [subOutId], references: [id])
+  subOutId     String?
+
+  createdAt    DateTime  @default(now())
+}
