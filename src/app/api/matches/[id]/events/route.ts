@@ -74,6 +74,15 @@ export async function POST(
     const match = await prisma.match.findUnique({
       where: { id },
       include: {
+        roster: {
+          include: {
+            players: {
+              select: {
+                playerId: true,
+              },
+            },
+          },
+        },
         callUps: true,
         events: {
           where: {
@@ -97,6 +106,28 @@ export async function POST(
     const calledPlayers = new Set(
       match.callUps.filter((callUp) => callUp.status !== "NOT_CALLED").map((callUp) => callUp.playerId)
     );
+    const rosterPlayers = new Set(match.roster.players.map((item) => item.playerId));
+
+    if (playerId && !rosterPlayers.has(playerId)) {
+      return NextResponse.json(
+        { error: "Selected player does not belong to match roster" },
+        { status: 400 }
+      );
+    }
+
+    if (assistId && !rosterPlayers.has(assistId)) {
+      return NextResponse.json(
+        { error: "Assist player does not belong to match roster" },
+        { status: 400 }
+      );
+    }
+
+    if (subOutId && !rosterPlayers.has(subOutId)) {
+      return NextResponse.json(
+        { error: "Player out does not belong to match roster" },
+        { status: 400 }
+      );
+    }
 
     if (playerId && !calledPlayers.has(playerId)) {
       return NextResponse.json(

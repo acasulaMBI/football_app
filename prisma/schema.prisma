@@ -14,6 +14,7 @@ model Player {
   role         String       @default("UNKNOWN") // GOALKEEPER, DEFENDER, MIDFIELDER, FORWARD
   number       Int?
   dateOfBirth  DateTime?
+  rosters      RosterPlayer[]
   callUps      CallUp[]
   eventsAsMain MatchEvent[] @relation("MainPlayer")
   eventsAsAsst MatchEvent[] @relation("AssistPlayer")
@@ -22,10 +23,33 @@ model Player {
   updatedAt    DateTime     @updatedAt
 }
 
+model Roster {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  players     RosterPlayer[]
+  tournaments Tournament[]
+  matches     Match[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model RosterPlayer {
+  id        String   @id @default(uuid())
+  roster    Roster   @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  rosterId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  String
+  createdAt DateTime @default(now())
+
+  @@unique([rosterId, playerId])
+}
+
 model Tournament {
   id        String   @id @default(uuid())
   name      String
   season    String
+  roster    Roster   @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  rosterId  String
   matches   Match[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -37,6 +61,8 @@ model Match {
   opponent   String
   location   String       @default("HOME") // HOME, AWAY
   duration   Int          @default(90) // Total duration in minutes
+  roster     Roster       @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  rosterId   String
   tournament Tournament?  @relation(fields: [tournamentId], references: [id])
   tournamentId String?
   callUps    CallUp[]

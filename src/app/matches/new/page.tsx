@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ACTIVE_ROSTER_COOKIE } from "@/lib/activeRoster";
 
 interface Tournament {
   id: string;
@@ -14,15 +15,28 @@ export default function NewMatchPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [hasActiveRoster, setHasActiveRoster] = useState(false);
 
   useEffect(() => {
+    const hasRosterCookie = document.cookie
+      .split("; ")
+      .some((cookie) => cookie.startsWith(`${ACTIVE_ROSTER_COOKIE}=`));
+    setHasActiveRoster(hasRosterCookie);
+  }, []);
+
+  useEffect(() => {
+    if (!hasActiveRoster) {
+      setTournaments([]);
+      return;
+    }
+
     fetch("/api/tournaments")
       .then(res => res.json())
       .then(data => setTournaments(data))
       .catch(err => console.error("Failed to load tournaments", err));
-  }, []);
+  }, [hasActiveRoster]);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
@@ -68,6 +82,12 @@ export default function NewMatchPage() {
       </header>
 
       <section className="form-section">
+        {!hasActiveRoster ? (
+          <div className="empty-state">
+            <div className="empty-icon">🗂️</div>
+            <p>Seleziona prima una rosa attiva dal menu in alto.</p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="modern-form">
           <div className="form-group">
             <label htmlFor="date">Data e Ora *</label>
@@ -106,6 +126,7 @@ export default function NewMatchPage() {
             {loading ? "Salvataggio..." : "Salva Partita"}
           </button>
         </form>
+        )}
       </section>
     </main>
   );

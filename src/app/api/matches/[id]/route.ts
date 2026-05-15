@@ -10,6 +10,7 @@ export async function GET(
     const match = await prisma.match.findUnique({
       where: { id },
       include: {
+        roster: true,
         tournament: true,
         callUps: {
           include: {

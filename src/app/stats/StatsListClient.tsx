@@ -17,19 +17,45 @@ type SortDirection = "asc" | "desc";
 type FilterMode = "ALL" | "PLAYED_MATCHES" | "HAS_GOALS";
 
 interface StatsListClientProps {
-  initialStats: PlayerStatsItem[];
+  initialGlobalStats: PlayerStatsItem[];
+  perRosterStats: Array<{
+    rosterId: string;
+    rosterName: string;
+    players: PlayerStatsItem[];
+  }>;
+  rosterCumulativeStats: Array<{
+    rosterId: string;
+    rosterName: string;
+    matches: number;
+    goalsFor: number;
+    goalsAgainst: number;
+  }>;
 }
 
-export default function StatsListClient({ initialStats }: StatsListClientProps) {
+export default function StatsListClient({
+  initialGlobalStats,
+  perRosterStats,
+  rosterCumulativeStats,
+}: StatsListClientProps) {
   const [searchText, setSearchText] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("ALL");
   const [sortField, setSortField] = useState<SortField>("goals");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [selectedScope, setSelectedScope] = useState<string>("GLOBAL");
+
+  const activeDataset = useMemo(() => {
+    if (selectedScope === "GLOBAL") {
+      return initialGlobalStats;
+    }
+
+    const selectedRoster = perRosterStats.find((item) => item.rosterId === selectedScope);
+    return selectedRoster?.players || [];
+  }, [selectedScope, initialGlobalStats, perRosterStats]);
 
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = searchText.trim().toLocaleLowerCase("it-IT");
 
-    const filtered = initialStats.filter((item) => {
+    const filtered = activeDataset.filter((item) => {
       const fullName = `${item.lastName} ${item.firstName}`.toLocaleLowerCase("it-IT");
       const matchesSearch = !normalizedSearch || fullName.includes(normalizedSearch);
 
@@ -55,11 +81,24 @@ export default function StatsListClient({ initialStats }: StatsListClientProps) 
     });
 
     return sorted;
-  }, [initialStats, searchText, filterMode, sortField, sortDirection]);
+  }, [activeDataset, searchText, filterMode, sortField, sortDirection]);
 
   return (
     <>
       <div className="modern-form" style={{ marginBottom: "1rem", gap: "0.75rem" }}>
+        <select
+          className="form-input"
+          value={selectedScope}
+          onChange={(e) => setSelectedScope(e.target.value)}
+        >
+          <option value="GLOBAL">Cumulativo globale</option>
+          {perRosterStats.map((scope) => (
+            <option key={scope.rosterId} value={scope.rosterId}>
+              Rosa: {scope.rosterName}
+            </option>
+          ))}
+        </select>
+
         <input
           type="text"
           className="form-input"
@@ -100,6 +139,19 @@ export default function StatsListClient({ initialStats }: StatsListClientProps) 
           </select>
         </div>
       </div>
+
+      {selectedScope === "GLOBAL" ? (
+        <ul className="item-list" style={{ marginBottom: "1rem" }}>
+          {rosterCumulativeStats.map((item) => (
+            <li key={item.rosterId} className="list-item" style={{ padding: "0.85rem 1rem" }}>
+              <strong>{item.rosterName}</strong>
+              <div className="item-subtitle">
+                Partite: {item.matches} • GF: {item.goalsFor} • GS: {item.goalsAgainst}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {filteredAndSorted.length === 0 ? (
         <div className="empty-state">

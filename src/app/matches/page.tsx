@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getActiveRosterIdFromCookies } from "@/lib/activeRosterServer";
 
 export default async function MatchesPage() {
-  const matches = await prisma.match.findMany({
-    orderBy: { date: 'asc' },
-    include: { tournament: true }
-  });
+  const activeRosterId = await getActiveRosterIdFromCookies();
+  const matches = activeRosterId
+    ? await prisma.match.findMany({
+        where: { rosterId: activeRosterId },
+        orderBy: { date: 'asc' },
+        include: { tournament: true }
+      })
+    : [];
 
   return (
     <main className="page-container">
@@ -16,7 +21,12 @@ export default async function MatchesPage() {
       </header>
 
       <section className="list-section">
-        {matches.length === 0 ? (
+        {!activeRosterId ? (
+          <div className="empty-state">
+            <div className="empty-icon">🗂️</div>
+            <p>Seleziona prima una rosa attiva dal menu in alto.</p>
+          </div>
+        ) : matches.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">⚽</div>
             <p>Nessuna partita in programma.</p>

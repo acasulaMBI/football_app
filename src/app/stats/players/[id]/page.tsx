@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { computePlayerDetailedStats } from "@/lib/playerStats";
+import {
+  computePlayerDetailedStats,
+  computePlayerDetailedStatsByRoster,
+} from "@/lib/playerStats";
 
 export default async function PlayerStatsDetailsPage({
   params,
@@ -14,6 +17,12 @@ export default async function PlayerStatsDetailsPage({
     prisma.player.findUnique({ where: { id } }),
     prisma.match.findMany({
       include: {
+        roster: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         callUps: {
           select: {
             playerId: true,
@@ -36,6 +45,9 @@ export default async function PlayerStatsDetailsPage({
   if (!player) notFound();
 
   const stats = computePlayerDetailedStats(player, matches);
+  const perRosterStats = computePlayerDetailedStatsByRoster(player, matches).filter(
+    (item) => item.summary.matchesPlayed > 0 || item.summary.goals > 0 || item.summary.assists > 0
+  );
 
   return (
     <main className="page-container">
@@ -52,7 +64,7 @@ export default async function PlayerStatsDetailsPage({
           <h2 style={{ fontSize: "1.25rem" }}>
             {player.lastName} {player.firstName}
           </h2>
-          <p className="text-muted">Riepilogo stagionale</p>
+          <p className="text-muted">Riepilogo cumulativo globale</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
             <div>
               <strong>Gol:</strong> {stats.goals}
@@ -73,6 +85,22 @@ export default async function PlayerStatsDetailsPage({
               <strong>Rossi:</strong> {stats.redCardsDirect + stats.redCardsSecondYellow}</div>
           </div>
         </article>
+
+        {perRosterStats.length > 0 ? (
+          <article className="modern-form" style={{ gap: "0.75rem" }}>
+            <h3>Riepilogo per rosa</h3>
+            <ul className="item-list">
+              {perRosterStats.map((item) => (
+                <li key={item.rosterId} className="list-item" style={{ padding: "0.85rem 1rem" }}>
+                  <div style={{ fontWeight: 700 }}>{item.rosterName}</div>
+                  <div className="item-subtitle">
+                    Gol: {item.summary.goals} • Assist: {item.summary.assists} • Minuti: {item.summary.minutesPlayed} • Partite: {item.summary.matchesPlayed}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ) : null}
 
         <h3 style={{ marginTop: "0.5rem" }}>Dettaglio per partita</h3>
 

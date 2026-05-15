@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getActiveRosterIdFromCookies } from "@/lib/activeRosterServer";
 
 // Server Component to fetch players
 export default async function PlayersPage() {
-  const players = await prisma.player.findMany({
-    orderBy: { lastName: 'asc' },
-  });
+  const activeRosterId = await getActiveRosterIdFromCookies();
+
+  const memberships = activeRosterId
+    ? await prisma.rosterPlayer.findMany({
+        where: { rosterId: activeRosterId },
+        include: { player: true },
+        orderBy: { player: { lastName: "asc" } },
+      })
+    : [];
+  const players = memberships.map((membership) => membership.player);
 
   return (
     <main className="page-container">
@@ -16,7 +24,12 @@ export default async function PlayersPage() {
       </header>
 
       <section className="list-section">
-        {players.length === 0 ? (
+        {!activeRosterId ? (
+          <div className="empty-state">
+            <div className="empty-icon">🗂️</div>
+            <p>Seleziona prima una rosa attiva dal menu in alto.</p>
+          </div>
+        ) : players.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">👥</div>
             <p>Nessun giocatore in rosa.</p>
@@ -26,7 +39,7 @@ export default async function PlayersPage() {
           <ul className="item-list">
             {players.map((player) => (
               <li key={player.id} className="list-item">
-                <Link href={`/players/${player.id}`} className="list-item-link">
+                <Link href={`/stats/players/${player.id}`} className="list-item-link">
                   <div className="item-avatar">
                     {player.number ? player.number : "?"}
                   </div>

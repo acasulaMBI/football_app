@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import TopMenu from "./TopMenu";
 import "./globals.css";
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="it" className={inter.className}>
       <body>
         <div className="app-container">
+          <TopMenu />
           {children}
         </div>
       </body>

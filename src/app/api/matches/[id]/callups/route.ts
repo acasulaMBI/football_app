@@ -14,6 +14,32 @@ export async function POST(
       return NextResponse.json({ error: "PlayerId is required" }, { status: 400 });
     }
 
+    const match = await prisma.match.findUnique({
+      where: { id },
+      select: { id: true, rosterId: true },
+    });
+
+    if (!match) {
+      return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    }
+
+    const membership = await prisma.rosterPlayer.findUnique({
+      where: {
+        rosterId_playerId: {
+          rosterId: match.rosterId,
+          playerId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Player does not belong to match roster" },
+        { status: 400 }
+      );
+    }
+
     // Upsert callup
     const callUp = await prisma.callUp.upsert({
       where: {

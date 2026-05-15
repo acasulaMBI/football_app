@@ -8,6 +8,7 @@ help:
 	@echo "  make up       - Avvia i container in background"
 	@echo "  make down     - Ferma e rimuove i container"
 	@echo "  make restart  - Riavvia i container"
+	@echo "  make ps       - Mostra lo stato dei container"
 	@echo "  make logs     - Visualizza i log in tempo reale"
 	@echo "  make shell    - Apre una shell interattiva nel container"
 	@echo "  make db-push  - Sincronizza manualmente lo schema del database"
@@ -27,6 +28,9 @@ down:
 
 restart:
 	docker compose restart
+
+ps:
+	docker compose ps -a
 
 logs:
 	docker compose logs -f

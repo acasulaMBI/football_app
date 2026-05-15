@@ -14,7 +14,25 @@ export default async function CallUpsPage({
       where: { id },
       include: { callUps: true }
     }),
-    prisma.player.findMany({ orderBy: { lastName: 'asc' } })
+    prisma.rosterPlayer.findMany({
+      where: {
+        roster: {
+          matches: {
+            some: {
+              id,
+            },
+          },
+        },
+      },
+      include: {
+        player: true,
+      },
+      orderBy: {
+        player: {
+          lastName: "asc",
+        },
+      },
+    })
   ]);
 
   if (!match) return <div className="page-container"><p>Partita non trovata</p></div>;
@@ -25,7 +43,7 @@ export default async function CallUpsPage({
     return acc;
   }, {} as Record<string, string>);
 
-  const initialData = players.map(player => ({
+  const initialData = players.map(({ player }) => ({
     player,
     status: callUpMap[player.id] || "NOT_CALLED"
   }));

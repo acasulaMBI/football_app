@@ -4,6 +4,11 @@ type MatchLike = {
   opponent: string;
   location: string;
   duration: number;
+  rosterId: string;
+  roster?: {
+    id: string;
+    name: string;
+  } | null;
   callUps: Array<{ playerId: string; status: string }>;
   events: Array<{
     minute: number;
@@ -45,6 +50,21 @@ export type PlayerMatchDetail = {
 
 export type PlayerDetailedStats = PlayerSummaryStats & {
   matches: PlayerMatchDetail[];
+};
+
+export type PlayerRosterStats = {
+  rosterId: string;
+  rosterName: string;
+  summary: PlayerSummaryStats;
+  matches: PlayerMatchDetail[];
+};
+
+export type RosterCumulativeStats = {
+  rosterId: string;
+  rosterName: string;
+  matches: number;
+  goalsFor: number;
+  goalsAgainst: number;
 };
 
 type Participation = {
@@ -188,4 +208,62 @@ export function computePlayerDetailedStats(
     ...summary,
     matches: details,
   };
+}
+
+export function computePlayerDetailedStatsByRoster(
+  player: { id: string; firstName: string; lastName: string },
+  matches: MatchLike[]
+): PlayerRosterStats[] {
+  const groupedByRoster = new Map<string, MatchLike[]>();
+
+  for (const match of matches) {
+    const list = groupedByRoster.get(match.rosterId) || [];
+    list.push(match);
+    groupedByRoster.set(match.rosterId, list);
+  }
+
+  return [...groupedByRoster.entries()]
+    .map(([rosterId, rosterMatches]) => {
+      const summary = computePlayerSummary(player, rosterMatches);
+      const details = computePlayerDetailedStats(player, rosterMatches);
+
+      return {
+        rosterId,
+        rosterName: rosterMatches[0]?.roster?.name || "Rosa",
+        summary,
+        matches: details.matches,
+      };
+    })
+    .sort((a, b) => a.rosterName.localeCompare(b.rosterName, "it-IT"));
+}
+
+export function computeRosterCumulativeStats(matches: MatchLike[]): RosterCumulativeStats[] {
+  const byRoster = new Map<
+    string,
+    { rosterName: string; matches: number; goalsFor: number; goalsAgainst: number }
+  >();
+
+  for (const match of matches) {
+    const current = byRoster.get(match.rosterId) || {
+      rosterName: match.roster?.name || "Rosa",
+      matches: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+    };
+
+    current.matches += 1;
+    current.goalsFor += match.events.filter((event) => event.type === "GOAL").length;
+    current.goalsAgainst += match.events.filter((event) => event.type === "OPPONENT_GOAL").length;
+    byRoster.set(match.rosterId, current);
+  }
+
+  return [...byRoster.entries()]
+    .map(([rosterId, values]) => ({
+      rosterId,
+      rosterName: values.rosterName,
+      matches: values.matches,
+      goalsFor: values.goalsFor,
+      goalsAgainst: values.goalsAgainst,
+    }))
+    .sort((a, b) => a.rosterName.localeCompare(b.rosterName, "it-IT"));
 }

@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ACTIVE_ROSTER_COOKIE } from "@/lib/activeRoster";
 
 export default function NewTournamentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [hasActiveRoster, setHasActiveRoster] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    const hasRosterCookie = document.cookie
+      .split("; ")
+      .some((cookie) => cookie.startsWith(`${ACTIVE_ROSTER_COOKIE}=`));
+    setHasActiveRoster(hasRosterCookie);
+  }, []);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
@@ -48,6 +57,12 @@ export default function NewTournamentPage() {
       </header>
 
       <section className="form-section">
+        {!hasActiveRoster ? (
+          <div className="empty-state">
+            <div className="empty-icon">🗂️</div>
+            <p>Seleziona prima una rosa attiva dal menu in alto.</p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="modern-form">
           <div className="form-group">
             <label htmlFor="name">Nome Torneo *</label>
@@ -63,6 +78,7 @@ export default function NewTournamentPage() {
             {loading ? "Salvataggio..." : "Salva Torneo"}
           </button>
         </form>
+        )}
       </section>
     </main>
   );

@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getActiveRosterIdFromCookies } from "@/lib/activeRosterServer";
 
 export async function GET() {
   try {
+    const activeRosterId = await getActiveRosterIdFromCookies();
     const players = await prisma.player.findMany({
-      orderBy: { lastName: 'asc' }
+      where: activeRosterId
+        ? {
+            rosters: {
+              some: {
+                rosterId: activeRosterId,
+              },
+            },
+          }
+        : undefined,
+      orderBy: { lastName: 'asc' },
     });
     return NextResponse.json(players);
   } catch (error) {
@@ -15,8 +26,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const activeRosterId = await getActiveRosterIdFromCookies();
     const body = await request.json();
     const { firstName, lastName, role, number, dateOfBirth } = body;
+
+    if (!activeRosterId) {
+      return NextResponse.json({ error: "Active roster is required" }, { status: 400 });
+    }
 
     if (!firstName || !lastName) {
       return NextResponse.json({ error: "First name and last name are required" }, { status: 400 });
@@ -29,6 +45,11 @@ export async function POST(request: Request) {
         role: role || "UNKNOWN",
         number: number ? parseInt(number, 10) : null,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        rosters: {
+          create: {
+            rosterId: activeRosterId,
+          },
+        },
       },
     });
 
