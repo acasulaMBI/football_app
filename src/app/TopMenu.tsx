@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { ACTIVE_ROSTER_COOKIE } from "@/lib/activeRoster";
+import { USER_ROLE_LABELS_IT } from "@/lib/userRoles";
 
 type MenuItem = {
   href: string;
@@ -13,6 +14,15 @@ type MenuItem = {
 type RosterItem = {
   id: string;
   name: string;
+};
+
+type CurrentUser = {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  role: keyof typeof USER_ROLE_LABELS_IT;
 };
 
 const items: MenuItem[] = [
@@ -38,8 +48,18 @@ export default function TopMenu() {
   const [rosters, setRosters] = useState<RosterItem[]>([]);
   const [activeRosterId, setActiveRosterId] = useState("");
   const [newRosterName, setNewRosterName] = useState("");
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const canWrite = currentUser?.role === "ADMIN" || currentUser?.role === "EDITOR";
+  const isAdmin = currentUser?.role === "ADMIN";
 
   useEffect(() => {
+    if (pathname === "/login") {
+      setLoadingUser(false);
+      return;
+    }
+
     const cookieValue = document.cookie
       .split("; ")
       .find((cookie) => cookie.startsWith(`${ACTIVE_ROSTER_COOKIE}=`))
@@ -49,10 +69,15 @@ export default function TopMenu() {
       setActiveRosterId(decodeURIComponent(cookieValue));
     }
 
-    fetch("/api/rosters")
-      .then((res) => res.json())
-      .then((data: RosterItem[]) => {
+    Promise.all([
+      fetch("/api/auth/me").then((res) => (res.ok ? res.json() : Promise.reject(new Error("unauthorized")))),
+      fetch("/api/rosters").then((res) => (res.ok ? res.json() : Promise.reject(new Error("rosters error")))),
+    ])
+      .then(([me, rosterList]) => {
+        setCurrentUser(me.user as CurrentUser);
+        const data = rosterList as RosterItem[];
         setRosters(data);
+
         if (!cookieValue && data.length > 0) {
           const firstRosterId = data[0].id;
           document.cookie = `${ACTIVE_ROSTER_COOKIE}=${encodeURIComponent(firstRosterId)}; path=/; max-age=31536000; SameSite=Lax`;
@@ -60,8 +85,14 @@ export default function TopMenu() {
           router.refresh();
         }
       })
-      .catch((error) => console.error("Failed to load rosters", error));
-  }, [router]);
+      .catch(() => {
+        setCurrentUser(null);
+        if (pathname !== "/login") {
+          router.push("/login");
+        }
+      })
+      .finally(() => setLoadingUser(false));
+  }, [pathname, router]);
 
   const setActiveRoster = (rosterId: string) => {
     document.cookie = `${ACTIVE_ROSTER_COOKIE}=${encodeURIComponent(rosterId)}; path=/; max-age=31536000; SameSite=Lax`;
@@ -71,6 +102,8 @@ export default function TopMenu() {
 
   const handleCreateRoster = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canWrite) return;
+
     const name = newRosterName.trim();
     if (!name) return;
 
@@ -96,8 +129,42 @@ export default function TopMenu() {
     }
   };
 
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    setCurrentUser(null);
+    router.push("/login");
+    router.refresh();
+  };
+
+  if (pathname === "/login") {
+    return null;
+  }
+
+  if (loadingUser) {
+    return null;
+  }
+
   return (
     <div className="top-menu-wrap">
+      {currentUser ? (
+        <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <strong>{currentUser.lastName} {currentUser.firstName}</strong>
+            <span className="item-subtitle">{USER_ROLE_LABELS_IT[currentUser.role]}</span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            {isAdmin ? (
+              <Link href="/admin/users" className="back-button">
+                Admin
+              </Link>
+            ) : null}
+            <button type="button" className="back-button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <nav className="top-menu" aria-label="Menu principale">
         {items.map((item) => {
           const active = isActive(pathname, item.href);
@@ -138,8 +205,9 @@ export default function TopMenu() {
             placeholder="Nuova rosa"
             value={newRosterName}
             onChange={(e) => setNewRosterName(e.target.value)}
+            disabled={!canWrite}
           />
-          <button type="submit" className="primary-action-button">+ Crea</button>
+          <button type="submit" className="primary-action-button" disabled={!canWrite}>+ Crea</button>
         </form>
       </div>
     </div>

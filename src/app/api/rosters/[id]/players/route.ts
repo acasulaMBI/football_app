@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { assertRosterAccess, getAuthErrorMessage, requireWriteUser } from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireWriteUser(request);
     const { id: rosterId } = await params;
+    await assertRosterAccess(user, rosterId);
+
     const body = await request.json();
     const playerId = String(body?.playerId || "").trim();
 
@@ -43,6 +47,11 @@ export async function POST(
 
     return NextResponse.json(membership, { status: 201 });
   } catch (error) {
+    const authError = getAuthErrorMessage(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
+
     console.error("Error adding player to roster:", error);
     return NextResponse.json({ error: "Failed to add player to roster" }, { status: 500 });
   }
@@ -53,7 +62,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireWriteUser(request);
     const { id: rosterId } = await params;
+    await assertRosterAccess(user, rosterId);
+
     const body = await request.json();
     const playerId = String(body?.playerId || "").trim();
 
@@ -72,6 +84,11 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const authError = getAuthErrorMessage(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
+
     console.error("Error removing player from roster:", error);
     return NextResponse.json({ error: "Failed to remove player from roster" }, { status: 500 });
   }

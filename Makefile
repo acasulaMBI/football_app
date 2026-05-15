@@ -1,6 +1,6 @@
 # Football Team Manager - Makefile
 
-.PHONY: build up down restart logs shell db-push debug-up debug-down debug-logs help
+.PHONY: build up down restart logs shell db-push debug-up debug-down debug-logs db_reset help
 
 help:
 	@echo "Comandi disponibili:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make debug-up - Avvia il container in modalita debug (porta 9229)"
 	@echo "  make debug-down - Ferma il container di debug"
 	@echo "  make debug-logs - Visualizza i log del container di debug"
+	@echo "  make db_reset - Reset completo DB SQLite locale e riavvio stack debug"
 	@echo "  make clean    - Rimuove container e volumi (ATTENZIONE: cancella i dati)"
 
 build:
@@ -49,6 +50,11 @@ debug-down:
 
 debug-logs:
 	docker compose -f docker-compose.yml -f docker-compose.debug.yml logs -f
+
+db_reset:
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml down
+	rm -f data/dev.db data/dev.db-journal
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --build
 
 clean:
 	docker compose down -v --rmi all

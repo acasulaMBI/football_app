@@ -16,28 +16,46 @@ export default function NewMatchPage() {
   const [loading, setLoading] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [hasActiveRoster, setHasActiveRoster] = useState(false);
+  const [canWrite, setCanWrite] = useState(false);
 
   useEffect(() => {
     const hasRosterCookie = document.cookie
       .split("; ")
       .some((cookie) => cookie.startsWith(`${ACTIVE_ROSTER_COOKIE}=`));
     setHasActiveRoster(hasRosterCookie);
-  }, []);
+
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("unauthorized"))))
+      .then((data: { user: { role: string } }) => {
+        const allowed = data.user.role === "ADMIN" || data.user.role === "EDITOR";
+        setCanWrite(allowed);
+        if (!allowed) {
+          router.push("/matches");
+        }
+      })
+      .catch(() => {
+        router.push("/login");
+      });
+  }, [router]);
 
   useEffect(() => {
-    if (!hasActiveRoster) {
+    if (!hasActiveRoster || !canWrite) {
       setTournaments([]);
       return;
     }
 
     fetch("/api/tournaments")
-      .then(res => res.json())
-      .then(data => setTournaments(data))
-      .catch(err => console.error("Failed to load tournaments", err));
-  }, [hasActiveRoster]);
+      .then((res) => res.json())
+      .then((data) => setTournaments(data))
+      .catch((err) => console.error("Failed to load tournaments", err));
+  }, [canWrite, hasActiveRoster]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!hasActiveRoster || !canWrite) {
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -70,15 +88,14 @@ export default function NewMatchPage() {
     }
   }
 
-  // Set default date to today
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <main className="page-container">
       <header className="page-header">
         <Link href="/matches" className="back-button">← Annulla</Link>
         <h1>Nuova Partita</h1>
-        <div style={{ width: '60px' }}></div>
+        <div style={{ width: "60px" }} />
       </header>
 
       <section className="form-section">
@@ -87,45 +104,50 @@ export default function NewMatchPage() {
             <div className="empty-icon">🗂️</div>
             <p>Seleziona prima una rosa attiva dal menu in alto.</p>
           </div>
+        ) : !canWrite ? (
+          <div className="empty-state">
+            <div className="empty-icon">🔒</div>
+            <p>Non hai i permessi per creare partite.</p>
+          </div>
         ) : (
-        <form onSubmit={handleSubmit} className="modern-form">
-          <div className="form-group">
-            <label htmlFor="date">Data e Ora *</label>
-            <input type="datetime-local" id="date" name="date" required className="form-input" defaultValue={`${today}T15:00`} />
-          </div>
+          <form onSubmit={handleSubmit} className="modern-form">
+            <div className="form-group">
+              <label htmlFor="date">Data e Ora *</label>
+              <input type="datetime-local" id="date" name="date" required className="form-input" defaultValue={`${today}T15:00`} />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="opponent">Avversario *</label>
-            <input type="text" id="opponent" name="opponent" required className="form-input" placeholder="Es. Real Madrid" />
-          </div>
+            <div className="form-group">
+              <label htmlFor="opponent">Avversario *</label>
+              <input type="text" id="opponent" name="opponent" required className="form-input" placeholder="Es. Real Madrid" />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="location">Luogo *</label>
-            <select id="location" name="location" className="form-input" defaultValue="HOME">
-              <option value="HOME">Casa</option>
-              <option value="AWAY">Trasferta</option>
-            </select>
-          </div>
+            <div className="form-group">
+              <label htmlFor="location">Luogo *</label>
+              <select id="location" name="location" className="form-input" defaultValue="HOME">
+                <option value="HOME">Casa</option>
+                <option value="AWAY">Trasferta</option>
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="tournamentId">Torneo (Opzionale)</label>
-            <select id="tournamentId" name="tournamentId" className="form-input" defaultValue="">
-              <option value="">Nessuno (Amichevole)</option>
-              {tournaments.map(t => (
-                <option key={t.id} value={t.id}>{t.name} ({t.season})</option>
-              ))}
-            </select>
-          </div>
+            <div className="form-group">
+              <label htmlFor="tournamentId">Torneo (Opzionale)</label>
+              <select id="tournamentId" name="tournamentId" className="form-input" defaultValue="">
+                <option value="">Nessuno (Amichevole)</option>
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.season})</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="duration">Durata (Minuti)</label>
-            <input type="number" id="duration" name="duration" className="form-input" defaultValue={90} />
-          </div>
+            <div className="form-group">
+              <label htmlFor="duration">Durata (Minuti)</label>
+              <input type="number" id="duration" name="duration" className="form-input" defaultValue={90} />
+            </div>
 
-          <button type="submit" className="submit-button" disabled={loading}>
-            {loading ? "Salvataggio..." : "Salva Partita"}
-          </button>
-        </form>
+            <button type="submit" className="submit-button" disabled={loading}>
+              {loading ? "Salvataggio..." : "Salva Partita"}
+            </button>
+          </form>
         )}
       </section>
     </main>

@@ -69,4 +69,43 @@ Nel profilo debug viene eseguito automaticamente:
 npx prisma db push --accept-data-loss
 ```
 
-Il DB sqlite persiste nel volume `football-data-dev`.
+Il DB sqlite persiste nel file locale `data/dev.db` (bind mount `./data:/app/data`).
+
+Per azzerare il database locale:
+
+```bash
+rm -f data/dev.db data/dev.db-journal
+```
+
+## Autenticazione e ruoli
+
+Le API e le pagine sono protette con JWT access token + refresh token, con ruoli:
+- `ADMIN`
+- `EDITOR`
+- `VIEWER`
+
+### Configurazione `JWT_SECRET`
+
+In Docker Compose e gia impostata una variabile `JWT_SECRET`.
+In produzione, imposta un valore forte:
+
+```bash
+export JWT_SECRET="<segreto-lungo-e-random>"
+```
+
+### Primo accesso
+
+Se non esistono utenti:
+1. apri `/login`
+2. usa il pulsante `Primo avvio? Crea admin`
+3. crea il primo utente amministratore
+
+### Migrazione schema (auth + ownership)
+
+Con toolchain Node 20+:
+
+```bash
+npx prisma migrate dev --name auth_rbac_users
+```
+
+In ambiente debug Docker e comunque possibile usare `db push` (gia eseguito all'avvio).

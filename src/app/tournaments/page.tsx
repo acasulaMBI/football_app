@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getActiveRosterIdFromCookies } from "@/lib/activeRosterServer";
+import { getCurrentUserPermissions } from "@/lib/authServer";
 
 export default async function TournamentsPage() {
+  const { canWrite } = await getCurrentUserPermissions();
   const activeRosterId = await getActiveRosterIdFromCookies();
   const tournaments = activeRosterId
     ? await prisma.tournament.findMany({
@@ -21,7 +23,11 @@ export default async function TournamentsPage() {
       <header className="page-header">
         <Link href="/" className="back-button">← Home</Link>
         <h1>Tornei</h1>
-        <Link href="/tournaments/new" className="primary-action-button">+ Nuovo</Link>
+        {canWrite ? (
+          <Link href="/tournaments/new" className="primary-action-button">+ Nuovo</Link>
+        ) : (
+          <div style={{ width: "60px" }} />
+        )}
       </header>
 
       <section className="list-section">

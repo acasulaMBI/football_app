@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import MatchEventsActions from "./MatchEventsActions";
 import DeleteEventButton from "./DeleteEventButton";
+import { getCurrentUserPermissions } from "@/lib/authServer";
+import { getGoalTypeLabel } from "@/lib/goalTypes";
 
 export default async function MatchDetailsPage({
   params,
@@ -9,11 +11,15 @@ export default async function MatchDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  
+  const { user, canWrite } = await getCurrentUserPermissions();
+
   const match = await prisma.match.findUnique({
     where: { id },
     include: {
       tournament: true,
+      roster: {
+        select: { ownerId: true },
+      },
       events: {
         include: {
           player: true,
@@ -29,6 +35,15 @@ export default async function MatchDetailsPage({
   });
 
   if (!match) return <div className="page-container"><p>Partita non trovata</p></div>;
+
+  const canAccessMatch =
+    user?.role === "ADMIN" ||
+    match.roster.ownerId === null ||
+    (user?.id && match.roster.ownerId === user.id);
+
+  if (!canAccessMatch) {
+    return <div className="page-container"><p>Partita non trovata</p></div>;
+  }
 
   const ourGoals = match.events.filter((event) => event.type === "GOAL").length;
   const opponentGoals = match.events.filter((event) => event.type === "OPPONENT_GOAL").length;
@@ -76,15 +91,18 @@ export default async function MatchDetailsPage({
       </section>
 
       <section style={{ padding: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <Link href={`/matches/${match.id}/callups`} className="primary-action-button" style={{ background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary)', textDecoration: 'none' }}>
-            📋 Gestisci Convocazioni
-          </Link>
-        </div>
+        {canWrite ? (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <Link href={`/matches/${match.id}/callups`} className="primary-action-button" style={{ background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary)', textDecoration: 'none' }}>
+              📋 Gestisci Convocazioni
+            </Link>
+          </div>
+        ) : null}
 
         <MatchEventsActions
           matchId={match.id}
           players={selectablePlayers}
+          canWrite={canWrite}
           starterIds={starterIds}
           benchIds={benchIds}
           substitutions={substitutions}
@@ -102,6 +120,12 @@ export default async function MatchDetailsPage({
                   {event.type === 'GOAL' && (
                     <span>
                       ⚽ Gol di <strong>{event.player?.lastName || 'Giocatore'}</strong>
+                      {getGoalTypeLabel(event.goalType) ? (
+                        <>
+                          {' '}
+                          (<strong>{getGoalTypeLabel(event.goalType)}</strong>)
+                        </>
+                      ) : null}
                       {event.assist ? (
                         <>
                           {' '}
@@ -121,7 +145,7 @@ export default async function MatchDetailsPage({
                   {event.type === 'RED_CARD_SECOND_YELLOW' && <span>🟥 Doppio giallo a <strong>{event.player?.lastName || 'Giocatore'}</strong></span>}
                   {event.type === 'OPPONENT_GOAL' && <span>🎯 Gol avversario</span>}
                 </div>
-                <DeleteEventButton matchId={match.id} eventId={event.id} />
+                <DeleteEventButton matchId={match.id} eventId={event.id} canWrite={canWrite} />
               </li>
             ))}
           </ul>

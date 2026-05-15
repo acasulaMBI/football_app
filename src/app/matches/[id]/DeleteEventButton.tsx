@@ -5,12 +5,18 @@ import { useRouter } from "next/navigation";
 interface DeleteEventButtonProps {
   matchId: string;
   eventId: string;
+  canWrite: boolean;
 }
 
-export default function DeleteEventButton({ matchId, eventId }: DeleteEventButtonProps) {
+export default function DeleteEventButton({ matchId, eventId, canWrite }: DeleteEventButtonProps) {
   const router = useRouter();
 
   const handleDelete = async () => {
+    if (!canWrite) {
+      alert("Non hai i permessi per eliminare eventi.");
+      return;
+    }
+
     const confirmed = window.confirm("Eliminare questo evento?");
     if (!confirmed) return;
 
@@ -31,6 +37,7 @@ export default function DeleteEventButton({ matchId, eventId }: DeleteEventButto
     <button
       type="button"
       onClick={handleDelete}
+      disabled={!canWrite}
       style={{
         marginLeft: "auto",
         border: "1px solid var(--danger)",

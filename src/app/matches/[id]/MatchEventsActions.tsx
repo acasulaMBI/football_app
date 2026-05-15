@@ -12,6 +12,7 @@ interface SelectablePlayer {
 interface MatchEventsActionsProps {
   matchId: string;
   players: SelectablePlayer[];
+  canWrite: boolean;
   starterIds: string[];
   benchIds: string[];
   substitutions: Array<{ minute: number; playerId: string | null; subOutId: string | null }>;
@@ -27,6 +28,7 @@ type ActionType =
 export default function MatchEventsActions({
   matchId,
   players,
+  canWrite,
   starterIds,
   benchIds,
   substitutions,
@@ -38,6 +40,7 @@ export default function MatchEventsActions({
   const [goalMinute, setGoalMinute] = useState("");
   const [goalPlayerId, setGoalPlayerId] = useState("");
   const [goalAssistId, setGoalAssistId] = useState("");
+  const [goalType, setGoalType] = useState("");
 
   const [subMinute, setSubMinute] = useState("");
   const [subInId, setSubInId] = useState("");
@@ -63,6 +66,7 @@ export default function MatchEventsActions({
     setGoalMinute("");
     setGoalPlayerId("");
     setGoalAssistId("");
+    setGoalType("");
     setSubMinute("");
     setSubInId("");
     setSubOutId("");
@@ -109,6 +113,11 @@ export default function MatchEventsActions({
       return;
     }
 
+    if (!canWrite) {
+      alert("Non hai i permessi per registrare eventi.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       await postEvent({
@@ -116,6 +125,7 @@ export default function MatchEventsActions({
         type: "GOAL",
         playerId: goalPlayerId,
         assistId: goalAssistId,
+        goalType,
       });
       resetForms();
       setActiveAction(null);
@@ -130,6 +140,11 @@ export default function MatchEventsActions({
   const handleSubSubmit = async () => {
     if (!subMinute || !subInId || !subOutId) {
       alert("Inserisci minuto, chi entra e chi esce.");
+      return;
+    }
+
+    if (!canWrite) {
+      alert("Non hai i permessi per registrare eventi.");
       return;
     }
 
@@ -177,6 +192,11 @@ export default function MatchEventsActions({
       return;
     }
 
+    if (!canWrite) {
+      alert("Non hai i permessi per registrare eventi.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       await postEvent({ minute: opponentGoalMinute, type: "OPPONENT_GOAL" });
@@ -196,6 +216,11 @@ export default function MatchEventsActions({
       return;
     }
 
+    if (!canWrite) {
+      alert("Non hai i permessi per registrare eventi.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       await postEvent({ minute: yellowMinute, type: "YELLOW_CARD", playerId: yellowPlayerId });
@@ -212,6 +237,11 @@ export default function MatchEventsActions({
   const handleRedSubmit = async () => {
     if (!redMinute || !redPlayerId) {
       alert("Inserisci minuto e giocatore espulso.");
+      return;
+    }
+
+    if (!canWrite) {
+      alert("Non hai i permessi per registrare eventi.");
       return;
     }
 
@@ -250,6 +280,7 @@ export default function MatchEventsActions({
             opacity: activeAction && activeAction !== "GOAL" ? 0.8 : 1,
           }}
           onClick={() => setActiveAction((prev) => (prev === "GOAL" ? null : "GOAL"))}
+          disabled={!canWrite}
         >
           <span style={{ fontSize: "2rem" }}>⚽</span>
           Gol
@@ -268,6 +299,7 @@ export default function MatchEventsActions({
             opacity: activeAction && activeAction !== "SUBSTITUTION" ? 0.8 : 1,
           }}
           onClick={() => setActiveAction((prev) => (prev === "SUBSTITUTION" ? null : "SUBSTITUTION"))}
+          disabled={!canWrite}
         >
           <span style={{ fontSize: "2rem" }}>🔄</span>
           Cambio
@@ -286,6 +318,7 @@ export default function MatchEventsActions({
             opacity: activeAction && activeAction !== "OPPONENT_GOAL" ? 0.8 : 1,
           }}
           onClick={() => setActiveAction((prev) => (prev === "OPPONENT_GOAL" ? null : "OPPONENT_GOAL"))}
+          disabled={!canWrite}
         >
           <span style={{ fontSize: "2rem" }}>🎯</span>
           Gol avv.
@@ -305,6 +338,7 @@ export default function MatchEventsActions({
             opacity: activeAction && activeAction !== "YELLOW_CARD" ? 0.8 : 1,
           }}
           onClick={() => setActiveAction((prev) => (prev === "YELLOW_CARD" ? null : "YELLOW_CARD"))}
+          disabled={!canWrite}
         >
           <span style={{ fontSize: "1.5rem" }}>🟨</span>
           Giallo
@@ -324,6 +358,7 @@ export default function MatchEventsActions({
             opacity: activeAction && activeAction !== "RED_CARD" ? 0.8 : 1,
           }}
           onClick={() => setActiveAction((prev) => (prev === "RED_CARD" ? null : "RED_CARD"))}
+          disabled={!canWrite}
         >
           <span style={{ fontSize: "1.5rem" }}>🟥</span>
           Espuls.
@@ -367,6 +402,19 @@ export default function MatchEventsActions({
                     {player.lastName} {player.firstName}
                   </option>
                 ))}
+            </select>
+            <select
+              className="form-input"
+              value={goalType}
+              onChange={(e) => setGoalType(e.target.value)}
+            >
+              <option value="">Tipologia gol (opzionale)</option>
+              <option value="destro">Destro</option>
+              <option value="sinistro">Sinistro</option>
+              <option value="testa">Testa</option>
+              <option value="rigore">Rigore</option>
+              <option value="punizione">Punizione</option>
+              <option value="altro">Altro</option>
             </select>
             <button type="button" className="submit-button" onClick={handleGoalSubmit} disabled={isSaving}>
               {isSaving ? "Salvataggio..." : "Salva gol"}

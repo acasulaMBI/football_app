@@ -5,17 +5,51 @@ import {
   computePlayerDetailedStats,
   computePlayerDetailedStatsByRoster,
 } from "@/lib/playerStats";
+import { getCurrentUserPermissions } from "@/lib/authServer";
 
 export default async function PlayerStatsDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tournamentId?: string }>;
 }) {
   const { id } = await params;
+  const { user } = await getCurrentUserPermissions();
+  const { tournamentId = "" } = await searchParams;
 
-  const [player, matches] = await Promise.all([
+  const whereTournament =
+    tournamentId === ""
+      ? {}
+      : tournamentId === "friendly"
+        ? { tournamentId: null }
+        : { tournamentId };
+
+  const rosters = await prisma.roster.findMany({
+    where:
+      user?.role === "ADMIN"
+        ? undefined
+        : {
+            OR: [{ ownerId: user?.id || "" }, { ownerId: null }],
+          },
+    select: { id: true },
+  });
+
+  const rosterIds = rosters.map((roster) => roster.id);
+
+  const [player, matches, tournaments] = await Promise.all([
     prisma.player.findUnique({ where: { id } }),
     prisma.match.findMany({
+      where: {
+        ...whereTournament,
+        ...(user?.role === "ADMIN"
+          ? {}
+          : {
+              rosterId: {
+                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+              },
+            }),
+      },
       include: {
         roster: {
           select: {
@@ -40,6 +74,18 @@ export default async function PlayerStatsDetailsPage({
         },
       },
     }),
+    prisma.tournament.findMany({
+      where:
+        user?.role === "ADMIN"
+          ? undefined
+          : {
+              rosterId: {
+                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+              },
+            },
+      orderBy: [{ season: "desc" }, { name: "asc" }],
+      select: { id: true, name: true, season: true },
+    }),
   ]);
 
   if (!player) notFound();
@@ -60,6 +106,20 @@ export default async function PlayerStatsDetailsPage({
       </header>
 
       <section className="list-section" style={{ display: "grid", gap: "1rem" }}>
+        <form method="GET" className="modern-form" style={{ gap: "0.75rem" }}>
+          <label htmlFor="tournamentId">Filtra partite per torneo</label>
+          <select id="tournamentId" name="tournamentId" className="form-input" defaultValue={tournamentId}>
+            <option value="">Tutti i tornei</option>
+            <option value="friendly">Solo amichevoli</option>
+            {tournaments.map((tournament) => (
+              <option key={tournament.id} value={tournament.id}>
+                {tournament.name} ({tournament.season})
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="primary-action-button">Applica filtro</button>
+        </form>
+
         <article className="modern-form" style={{ gap: "0.75rem" }}>
           <h2 style={{ fontSize: "1.25rem" }}>
             {player.lastName} {player.firstName}
@@ -82,7 +142,8 @@ export default async function PlayerStatsDetailsPage({
               <strong>Gialli:</strong> {stats.yellowCards}
             </div>
             <div>
-              <strong>Rossi:</strong> {stats.redCardsDirect + stats.redCardsSecondYellow}</div>
+              <strong>Rossi:</strong> {stats.redCardsDirect + stats.redCardsSecondYellow}
+            </div>
           </div>
         </article>
 

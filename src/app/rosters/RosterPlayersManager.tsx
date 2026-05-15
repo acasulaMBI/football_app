@@ -11,10 +11,12 @@ type PlayerLite = {
 
 export default function RosterPlayersManager({
   rosterId,
+  canWrite,
   allPlayers,
   members,
 }: {
   rosterId: string;
+  canWrite: boolean;
   allPlayers: PlayerLite[];
   members: PlayerLite[];
 }) {
@@ -81,30 +83,34 @@ export default function RosterPlayersManager({
 
   return (
     <div style={{ display: "grid", gap: "0.75rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.5rem" }}>
-        <select
-          className="form-input"
-          value={selectedPlayerId}
-          onChange={(e) => setSelectedPlayerId(e.target.value)}
-          disabled={loading || availablePlayers.length === 0}
-        >
-          <option value="">Aggiungi giocatore esistente</option>
-          {availablePlayers.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.lastName} {player.firstName}
-            </option>
-          ))}
-        </select>
+      {canWrite ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.5rem" }}>
+          <select
+            className="form-input"
+            value={selectedPlayerId}
+            onChange={(e) => setSelectedPlayerId(e.target.value)}
+            disabled={loading || availablePlayers.length === 0}
+          >
+            <option value="">Aggiungi giocatore esistente</option>
+            {availablePlayers.map((player) => (
+              <option key={player.id} value={player.id}>
+                {player.lastName} {player.firstName}
+              </option>
+            ))}
+          </select>
 
-        <button
-          type="button"
-          className="primary-action-button"
-          onClick={addPlayer}
-          disabled={loading || !selectedPlayerId}
-        >
-          + Aggiungi
-        </button>
-      </div>
+          <button
+            type="button"
+            className="primary-action-button"
+            onClick={addPlayer}
+            disabled={loading || !selectedPlayerId}
+          >
+            + Aggiungi
+          </button>
+        </div>
+      ) : (
+        <p className="text-muted text-sm">Modalita sola lettura: modifiche disabilitate.</p>
+      )}
 
       {members.length === 0 ? (
         <p className="text-muted text-sm">Nessun giocatore in questa rosa.</p>
@@ -118,7 +124,7 @@ export default function RosterPlayersManager({
                   type="button"
                   className="back-button"
                   onClick={() => removePlayer(member.id)}
-                  disabled={loading}
+                  disabled={loading || !canWrite}
                 >
                   Rimuovi
                 </button>

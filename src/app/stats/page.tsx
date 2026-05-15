@@ -2,11 +2,49 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { computePlayerSummary, computeRosterCumulativeStats } from "@/lib/playerStats";
 import StatsListClient from "./StatsListClient";
+import { getCurrentUserPermissions } from "@/lib/authServer";
 
-export default async function StatsPage() {
-  const [players, matches, rosters] = await Promise.all([
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tournamentId?: string }>;
+}) {
+  const { user } = await getCurrentUserPermissions();
+  const { tournamentId = "" } = await searchParams;
+
+  const whereTournament =
+    tournamentId === ""
+      ? {}
+      : tournamentId === "friendly"
+        ? { tournamentId: null }
+        : { tournamentId };
+
+  const rosters = await prisma.roster.findMany({
+    where:
+      user?.role === "ADMIN"
+        ? undefined
+        : {
+            OR: [{ ownerId: user?.id || "" }, { ownerId: null }],
+          },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  const rosterIds = rosters.map((roster) => roster.id);
+
+  const [players, matches, tournaments] = await Promise.all([
     prisma.player.findMany({ orderBy: { lastName: "asc" } }),
     prisma.match.findMany({
+      where: {
+        ...whereTournament,
+        ...(user?.role === "ADMIN"
+          ? {}
+          : {
+              rosterId: {
+                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+              },
+            }),
+      },
       include: {
         roster: {
           select: {
@@ -31,9 +69,17 @@ export default async function StatsPage() {
         },
       },
     }),
-    prisma.roster.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
+    prisma.tournament.findMany({
+      where:
+        user?.role === "ADMIN"
+          ? undefined
+          : {
+              rosterId: {
+                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+              },
+            },
+      orderBy: [{ season: "desc" }, { name: "asc" }],
+      select: { id: true, name: true, season: true },
     }),
   ]);
 
@@ -75,6 +121,20 @@ export default async function StatsPage() {
       </header>
 
       <section className="list-section">
+        <form method="GET" className="modern-form" style={{ marginBottom: "1rem", gap: "0.75rem" }}>
+          <label htmlFor="tournamentId">Filtra partite per torneo</label>
+          <select id="tournamentId" name="tournamentId" className="form-input" defaultValue={tournamentId}>
+            <option value="">Tutti i tornei</option>
+            <option value="friendly">Solo amichevoli</option>
+            {tournaments.map((tournament) => (
+              <option key={tournament.id} value={tournament.id}>
+                {tournament.name} ({tournament.season})
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="primary-action-button">Applica filtro</button>
+        </form>
+
         {playersWithStats.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📊</div>

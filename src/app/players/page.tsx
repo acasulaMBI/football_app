@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getActiveRosterIdFromCookies } from "@/lib/activeRosterServer";
+import { getCurrentUserPermissions } from "@/lib/authServer";
+import { getPlayerRoleLabel } from "@/lib/playerRoleLabels";
 
 // Server Component to fetch players
 export default async function PlayersPage() {
+  const { canWrite } = await getCurrentUserPermissions();
   const activeRosterId = await getActiveRosterIdFromCookies();
 
   const memberships = activeRosterId
@@ -20,7 +23,11 @@ export default async function PlayersPage() {
       <header className="page-header">
         <Link href="/" className="back-button">← Home</Link>
         <h1>La Rosa</h1>
-        <Link href="/players/new" className="primary-action-button">+ Aggiungi</Link>
+        {canWrite ? (
+          <Link href="/players/new" className="primary-action-button">+ Aggiungi</Link>
+        ) : (
+          <div style={{ width: "60px" }} />
+        )}
       </header>
 
       <section className="list-section">
@@ -45,7 +52,7 @@ export default async function PlayersPage() {
                   </div>
                   <div className="item-details">
                     <h3 className="item-title">{player.lastName} {player.firstName}</h3>
-                    <span className="item-subtitle">{player.role}</span>
+                    <span className="item-subtitle">{getPlayerRoleLabel(player.role)}</span>
                   </div>
                   <div className="item-chevron">›</div>
                 </Link>

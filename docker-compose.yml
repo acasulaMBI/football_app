@@ -5,12 +5,11 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - DATABASE_URL=file:/app/data/dev.db
+      - DATABASE_URL=file:/app/data/football_app.db
       - NODE_ENV=production
       - PORT=4000
+      - JWT_SECRET=4nJx8YcWQk7mR2sVfP9tLzA6uD3eH1bX5cN8gK2qT7wF0yUjM6rB9pLsCvZaXe41
+      - AUTH_COOKIE_SECURE=false
     volumes:
-      - football-data:/app/data
+      - ./data:/app/data
     restart: always
-
-volumes:
-  football-data:

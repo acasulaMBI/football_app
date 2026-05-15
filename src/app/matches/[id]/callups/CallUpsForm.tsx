@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getPlayerRoleLabel } from "@/lib/playerRoleLabels";
 
 interface Player {
   id: string;
@@ -15,7 +16,15 @@ interface CallUpData {
   status: string;
 }
 
-export default function CallUpsForm({ matchId, initialData }: { matchId: string, initialData: CallUpData[] }) {
+export default function CallUpsForm({
+  matchId,
+  initialData,
+  canWrite,
+}: {
+  matchId: string;
+  initialData: CallUpData[];
+  canWrite: boolean;
+}) {
   const router = useRouter();
   const [callUps, setCallUps] = useState<CallUpData[]>(initialData);
   const [loading, setLoading] = useState(false);
@@ -25,6 +34,11 @@ export default function CallUpsForm({ matchId, initialData }: { matchId: string,
   };
 
   const handleSave = async () => {
+    if (!canWrite) {
+      alert("Non hai i permessi per modificare le convocazioni.");
+      return;
+    }
+
     setLoading(true);
     try {
       // Save all sequentially (or Promise.all)
@@ -53,13 +67,14 @@ export default function CallUpsForm({ matchId, initialData }: { matchId: string,
           <div key={player.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
             <div>
               <div style={{ fontWeight: '600' }}>{player.lastName} {player.firstName}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{player.role}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{getPlayerRoleLabel(player.role)}</div>
             </div>
             <select 
               value={status} 
               onChange={(e) => handleStatusChange(player.id, e.target.value)}
               className="form-input"
               style={{ padding: '0.5rem', minWidth: '120px' }}
+              disabled={!canWrite}
             >
               <option value="NOT_CALLED">Non Convocato</option>
               <option value="BENCH">Panchina</option>
@@ -69,9 +84,13 @@ export default function CallUpsForm({ matchId, initialData }: { matchId: string,
         ))}
       </div>
       
-      <button onClick={handleSave} className="submit-button" disabled={loading}>
-        {loading ? "Salvataggio..." : "Salva Convocazioni"}
-      </button>
+      {canWrite ? (
+        <button onClick={handleSave} className="submit-button" disabled={loading}>
+          {loading ? "Salvataggio..." : "Salva Convocazioni"}
+        </button>
+      ) : (
+        <p className="text-muted">Modalita sola lettura: non puoi modificare le convocazioni.</p>
+      )}
     </div>
   );
 }

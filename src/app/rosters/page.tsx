@@ -1,26 +1,46 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import RosterPlayersManager from "./RosterPlayersManager";
+import { getCurrentUserPermissions } from "@/lib/authServer";
 
 export default async function RostersPage() {
-  const [rosters, players] = await Promise.all([
-    prisma.roster.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        players: {
-          include: {
-            player: true,
+  const { user, canWrite } = await getCurrentUserPermissions();
+
+  const rosters = await prisma.roster.findMany({
+    where:
+      user?.role === "ADMIN"
+        ? undefined
+        : {
+            OR: [{ ownerId: user?.id || "" }, { ownerId: null }],
           },
-          orderBy: {
-            player: { lastName: "asc" },
-          },
+    orderBy: { name: "asc" },
+    include: {
+      players: {
+        include: {
+          player: true,
+        },
+        orderBy: {
+          player: { lastName: "asc" },
         },
       },
-    }),
-    prisma.player.findMany({
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    }),
-  ]);
+    },
+  });
+
+  const rosterIds = rosters.map((roster) => roster.id);
+
+  const players = await prisma.player.findMany({
+    where:
+      user?.role === "ADMIN"
+        ? undefined
+        : {
+            rosters: {
+              some: {
+                rosterId: { in: rosterIds.length > 0 ? rosterIds : ["__none__"] },
+              },
+            },
+          },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
 
   return (
     <main className="page-container">
@@ -44,6 +64,7 @@ export default async function RostersPage() {
               <p className="item-subtitle">{roster.players.length} giocatori associati</p>
               <RosterPlayersManager
                 rosterId={roster.id}
+                canWrite={canWrite}
                 allPlayers={players.map((player) => ({
                   id: player.id,
                   firstName: player.firstName,

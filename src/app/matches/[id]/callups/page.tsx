@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CallUpsForm from "./CallUpsForm";
+import { getCurrentUserPermissions } from "@/lib/authServer";
 
 export default async function CallUpsPage({
   params,
@@ -8,11 +9,17 @@ export default async function CallUpsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { user, canWrite } = await getCurrentUserPermissions();
   
   const [match, players] = await Promise.all([
     prisma.match.findUnique({
       where: { id },
-      include: { callUps: true }
+      include: {
+        callUps: true,
+        roster: {
+          select: { ownerId: true },
+        },
+      },
     }),
     prisma.rosterPlayer.findMany({
       where: {
@@ -37,6 +44,15 @@ export default async function CallUpsPage({
 
   if (!match) return <div className="page-container"><p>Partita non trovata</p></div>;
 
+  const canAccessMatch =
+    user?.role === "ADMIN" ||
+    match.roster.ownerId === null ||
+    (user?.id && match.roster.ownerId === user.id);
+
+  if (!canAccessMatch) {
+    return <div className="page-container"><p>Partita non trovata</p></div>;
+  }
+
   // Create a map of playerId -> status
   const callUpMap = match.callUps.reduce((acc, curr) => {
     acc[curr.playerId] = curr.status;
@@ -60,7 +76,7 @@ export default async function CallUpsPage({
         <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
           Seleziona lo stato per ciascun giocatore per la partita contro {match.opponent}.
         </p>
-        <CallUpsForm matchId={id} initialData={initialData} />
+        <CallUpsForm matchId={id} initialData={initialData} canWrite={canWrite} />
       </section>
     </main>
   );

@@ -11,15 +11,13 @@ services:
       - DATABASE_URL=file:/app/data/dev.db
       - NODE_ENV=development
       - PORT=4000
+      - JWT_SECRET=${JWT_SECRET:-dev-only-jwt-secret-change-me}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - NODE_OPTIONS=--inspect=0.0.0.0:9229
     volumes:
       - .:/app
       - /app/node_modules
-      - football-data-dev:/app/data
+      - ./data:/app/data
     command: sh -c "npx prisma db push --accept-data-loss && npm run dev -- --hostname 0.0.0.0 --port 4000"
     restart: unless-stopped
-
-volumes:
-  football-data-dev:

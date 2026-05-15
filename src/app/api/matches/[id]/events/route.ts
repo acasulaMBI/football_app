@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  assertRosterAccess,
+  getAuthErrorMessage,
+  requireWriteUser,
+} from "@/lib/auth";
+import { isGoalTypeValue, normalizeGoalType } from "@/lib/goalTypes";
 
 const ALLOWED_EVENT_TYPES = new Set([
   "GOAL",
@@ -41,6 +47,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireWriteUser(request);
     const { id } = await params;
     const body = await request.json();
     const { minute, type, playerId, goalType, assistId, subOutId } = body;
@@ -69,6 +76,16 @@ export async function POST(
 
     if (normalizedType === "GOAL" && assistId && assistId === playerId) {
       return NextResponse.json({ error: "Scorer and assist player must be different" }, { status: 400 });
+    }
+
+    const normalizedGoalType = normalizeGoalType(goalType ? String(goalType) : null);
+
+    if (normalizedType === "GOAL" && goalType && !normalizedGoalType) {
+      return NextResponse.json({ error: "Invalid goal type" }, { status: 400 });
+    }
+
+    if (normalizedGoalType && !isGoalTypeValue(normalizedGoalType)) {
+      return NextResponse.json({ error: "Invalid goal type" }, { status: 400 });
     }
 
     const match = await prisma.match.findUnique({
@@ -102,6 +119,8 @@ export async function POST(
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
+
+    await assertRosterAccess(user, match.rosterId);
 
     const calledPlayers = new Set(
       match.callUps.filter((callUp) => callUp.status !== "NOT_CALLED").map((callUp) => callUp.playerId)
@@ -199,7 +218,7 @@ export async function POST(
         minute: parsedMinute,
         type: normalizedType,
         playerId: playerId || null,
-        goalType: normalizedType === "GOAL" ? goalType || null : null,
+        goalType: normalizedType === "GOAL" ? normalizedGoalType || null : null,
         assistId: normalizedType === "GOAL" ? assistId || null : null,
         subOutId: subOutId || null,
       },
@@ -207,6 +226,11 @@ export async function POST(
 
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
+    const authError = getAuthErrorMessage(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
+
     console.error("Error creating match event:", error);
     return NextResponse.json({ error: "Failed to create match event" }, { status: 500 });
   }

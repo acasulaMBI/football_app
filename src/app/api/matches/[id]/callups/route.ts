@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  assertRosterAccess,
+  getAuthErrorMessage,
+  requireWriteUser,
+} from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireWriteUser(request);
     const { id } = await params;
     const body = await request.json();
     const { playerId, status } = body;
@@ -22,6 +28,8 @@ export async function POST(
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
+
+    await assertRosterAccess(user, match.rosterId);
 
     const membership = await prisma.rosterPlayer.findUnique({
       where: {
@@ -60,6 +68,11 @@ export async function POST(
 
     return NextResponse.json(callUp, { status: 201 });
   } catch (error) {
+    const authError = getAuthErrorMessage(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
+
     console.error("Error creating/updating call up:", error);
     return NextResponse.json({ error: "Failed to save call up" }, { status: 500 });
   }
