@@ -69,11 +69,17 @@ export default async function RostersPage() {
                   id: player.id,
                   firstName: player.firstName,
                   lastName: player.lastName,
+                  role: player.role,
+                  number: player.number,
+                  dateOfBirth: player.dateOfBirth ? player.dateOfBirth.toISOString() : null,
                 }))}
                 members={roster.players.map((membership) => ({
                   id: membership.player.id,
                   firstName: membership.player.firstName,
                   lastName: membership.player.lastName,
+                  role: membership.player.role,
+                  number: membership.player.number,
+                  dateOfBirth: membership.player.dateOfBirth ? membership.player.dateOfBirth.toISOString() : null,
                 }))}
               />
             </article>
