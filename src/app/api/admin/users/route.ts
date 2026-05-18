@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         firstName: true,
         lastName: true,
         role: true,
+        blocked: true,
         createdAt: true,
       },
     });
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
         firstName: true,
         lastName: true,
         role: true,
+        blocked: true,
         createdAt: true,
       },
     });

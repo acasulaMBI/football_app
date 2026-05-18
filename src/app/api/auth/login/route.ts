@@ -29,6 +29,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Credenziali non valide" }, { status: 401 });
     }
 
+    if (user.blocked) {
+      return NextResponse.json({ error: "Account bloccato. Contatta l'amministratore." }, { status: 403 });
+    }
+
     const validPassword = await verifyPassword(password, user.passwordHash);
     if (!validPassword) {
       return NextResponse.json({ error: "Credenziali non valide" }, { status: 401 });

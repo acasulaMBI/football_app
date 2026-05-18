@@ -11,6 +11,7 @@ type UserItem = {
   firstName: string;
   lastName: string;
   role: UserRole;
+  blocked: boolean;
   createdAt: string;
 };
 
@@ -97,6 +98,49 @@ export default function UsersAdminClient() {
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       setError(data?.error || "Impossibile aggiornare ruolo");
+      setSaving(false);
+      return;
+    }
+
+    await loadUsers();
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string, username: string) => {
+    if (!window.confirm(`Eliminare definitivamente l'utente "${username}"? L'operazione non è reversibile.`)) return;
+
+    setSaving(true);
+    setError("");
+
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error || "Impossibile eliminare utente");
+      setSaving(false);
+      return;
+    }
+
+    await loadUsers();
+    setSaving(false);
+  };
+
+  const handleToggleBlock = async (id: string, currentlyBlocked: boolean) => {
+    const action = currentlyBlocked ? "sbloccare" : "bloccare";
+    if (!window.confirm(`Vuoi ${action} questo utente?`)) return;
+
+    setSaving(true);
+    setError("");
+
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocked: !currentlyBlocked }),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error || "Impossibile aggiornare stato utente");
       setSaving(false);
       return;
     }
@@ -205,14 +249,15 @@ export default function UsersAdminClient() {
           ) : (
             <ul className="item-list">
               {users.map((user) => (
-                <li key={user.id} className="list-item" style={{ padding: "0.85rem" }}>
+                <li key={user.id} className="list-item" style={{ padding: "0.85rem", opacity: user.blocked ? 0.6 : 1 }}>
                   <div style={{ display: "grid", gap: "0.6rem" }}>
                     <div>
                       <strong>{user.lastName} {user.firstName}</strong>
+                      {user.blocked ? <span style={{ marginLeft: "0.5rem", color: "var(--danger)", fontWeight: 600, fontSize: "0.8rem" }}>BLOCCATO</span> : null}
                       <div className="item-subtitle">@{user.username}</div>
                       <div className="item-subtitle">{user.email || "Nessuna email"}</div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.5rem", alignItems: "center" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "0.5rem", alignItems: "center" }}>
                       <select
                         className="form-input"
                         value={user.role}
@@ -232,6 +277,24 @@ export default function UsersAdminClient() {
                         disabled={saving}
                       >
                         Reset Password
+                      </button>
+                      <button
+                        type="button"
+                        className="back-button"
+                        onClick={() => handleToggleBlock(user.id, user.blocked)}
+                        disabled={saving}
+                        style={{ color: user.blocked ? "var(--success, green)" : "var(--warning, orange)" }}
+                      >
+                        {user.blocked ? "Sblocca" : "Blocca"}
+                      </button>
+                      <button
+                        type="button"
+                        className="back-button"
+                        onClick={() => handleDelete(user.id, user.username)}
+                        disabled={saving}
+                        style={{ color: "var(--danger)" }}
+                      >
+                        Elimina
                       </button>
                     </div>
                   </div>

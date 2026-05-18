@@ -7,12 +7,6 @@ export async function GET(request: Request) {
     const user = await requireAuthenticatedUser(request);
 
     const rosters = await prisma.roster.findMany({
-      where:
-        user.role === "ADMIN"
-          ? undefined
-          : {
-              OR: [{ ownerId: user.id }, { ownerId: null }],
-            },
       orderBy: { name: "asc" },
       include: {
         _count: {

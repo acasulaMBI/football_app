@@ -117,6 +117,7 @@ model User {
   lastName     String
   passwordHash String
   role         String    @default("VIEWER") // ADMIN, EDITOR, VIEWER
+  blocked      Boolean   @default(false)
   rosters      Roster[]
   sessions     Session[]
   createdAt    DateTime  @default(now())
