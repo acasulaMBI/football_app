@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import TopMenu from "./TopMenu";
+import packageJson from "../../package.json";
 import "./globals.css";
 
 export const dynamic = 'force-dynamic';
 
 const inter = Inter({ subsets: ["latin"] });
+const appVersion = packageJson.version;
 
 export const metadata: Metadata = {
   title: "Football Team Manager",
@@ -23,6 +25,7 @@ export default function RootLayout({
         <div className="app-container">
           <TopMenu />
           {children}
+          <footer className="app-footer">Versione {appVersion}</footer>
         </div>
       </body>
     </html>
