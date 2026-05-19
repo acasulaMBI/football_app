@@ -46,7 +46,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Data di nascita non valida" }, { status: 400 });
     }
 
-    if (user.role !== "ADMIN") {
+    if (user.role !== "ADMIN" && user.role !== "EDITOR") {
       const accessibleMembership = await prisma.rosterPlayer.findFirst({
         where: {
           playerId: id,

@@ -25,13 +25,5 @@ export async function getActiveRosterIdFromCookies() {
     return null;
   }
 
-  if (user.role === "ADMIN") {
-    return rosterId;
-  }
-
-  if (!roster.ownerId || roster.ownerId === user.id) {
-    return rosterId;
-  }
-
-  return null;
+  return rosterId;
 }

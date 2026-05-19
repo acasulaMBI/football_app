@@ -201,7 +201,7 @@ export async function assertRosterAccess(user: AuthenticatedUser, rosterId: stri
     throw new AuthError("Rosa non trovata", 404);
   }
 
-  if (user.role === "ADMIN") {
+  if (user.role === "ADMIN" || user.role === "EDITOR") {
     return;
   }
 

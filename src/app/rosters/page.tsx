@@ -4,15 +4,9 @@ import RosterPlayersManager from "./RosterPlayersManager";
 import { getCurrentUserPermissions } from "@/lib/authServer";
 
 export default async function RostersPage() {
-  const { user, canWrite } = await getCurrentUserPermissions();
+  const { canWrite } = await getCurrentUserPermissions();
 
   const rosters = await prisma.roster.findMany({
-    where:
-      user?.role === "ADMIN"
-        ? undefined
-        : {
-            OR: [{ ownerId: user?.id || "" }, { ownerId: null }],
-          },
     orderBy: { name: "asc" },
     include: {
       players: {
@@ -29,16 +23,13 @@ export default async function RostersPage() {
   const rosterIds = rosters.map((roster) => roster.id);
 
   const players = await prisma.player.findMany({
-    where:
-      user?.role === "ADMIN"
-        ? undefined
-        : {
-            rosters: {
-              some: {
-                rosterId: { in: rosterIds.length > 0 ? rosterIds : ["__none__"] },
-              },
-            },
-          },
+    where: {
+      rosters: {
+        some: {
+          rosterId: { in: rosterIds.length > 0 ? rosterIds : ["__none__"] },
+        },
+      },
+    },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
 

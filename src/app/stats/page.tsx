@@ -9,7 +9,7 @@ export default async function StatsPage({
 }: {
   searchParams: Promise<{ tournamentId?: string }>;
 }) {
-  const { user } = await getCurrentUserPermissions();
+  await getCurrentUserPermissions();
   const { tournamentId = "" } = await searchParams;
 
   const whereTournament =
@@ -20,12 +20,6 @@ export default async function StatsPage({
         : { tournamentId };
 
   const rosters = await prisma.roster.findMany({
-    where:
-      user?.role === "ADMIN"
-        ? undefined
-        : {
-            OR: [{ ownerId: user?.id || "" }, { ownerId: null }],
-          },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -37,13 +31,9 @@ export default async function StatsPage({
     prisma.match.findMany({
       where: {
         ...whereTournament,
-        ...(user?.role === "ADMIN"
-          ? {}
-          : {
-              rosterId: {
-                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
-              },
-            }),
+        rosterId: {
+          in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+        },
       },
       include: {
         roster: {
@@ -70,14 +60,11 @@ export default async function StatsPage({
       },
     }),
     prisma.tournament.findMany({
-      where:
-        user?.role === "ADMIN"
-          ? undefined
-          : {
-              rosterId: {
-                in: rosterIds.length > 0 ? rosterIds : ["__none__"],
-              },
-            },
+      where: {
+        rosterId: {
+          in: rosterIds.length > 0 ? rosterIds : ["__none__"],
+        },
+      },
       orderBy: [{ season: "desc" }, { name: "asc" }],
       select: { id: true, name: true, season: true },
     }),
