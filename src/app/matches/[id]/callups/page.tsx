@@ -9,16 +9,13 @@ export default async function CallUpsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { user, canWrite } = await getCurrentUserPermissions();
+  const { canWrite } = await getCurrentUserPermissions();
   
   const [match, players] = await Promise.all([
     prisma.match.findUnique({
       where: { id },
       include: {
         callUps: true,
-        roster: {
-          select: { ownerId: true },
-        },
       },
     }),
     prisma.rosterPlayer.findMany({
@@ -43,15 +40,6 @@ export default async function CallUpsPage({
   ]);
 
   if (!match) return <div className="page-container"><p>Partita non trovata</p></div>;
-
-  const canAccessMatch =
-    user?.role === "ADMIN" ||
-    match.roster.ownerId === null ||
-    (user?.id && match.roster.ownerId === user.id);
-
-  if (!canAccessMatch) {
-    return <div className="page-container"><p>Partita non trovata</p></div>;
-  }
 
   // Create a map of playerId -> status
   const callUpMap = match.callUps.reduce((acc, curr) => {

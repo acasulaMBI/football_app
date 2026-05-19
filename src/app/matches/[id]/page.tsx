@@ -11,15 +11,12 @@ export default async function MatchDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { user, canWrite } = await getCurrentUserPermissions();
+  const { canWrite } = await getCurrentUserPermissions();
 
   const match = await prisma.match.findUnique({
     where: { id },
     include: {
       tournament: true,
-      roster: {
-        select: { ownerId: true },
-      },
       events: {
         include: {
           player: true,
@@ -35,15 +32,6 @@ export default async function MatchDetailsPage({
   });
 
   if (!match) return <div className="page-container"><p>Partita non trovata</p></div>;
-
-  const canAccessMatch =
-    user?.role === "ADMIN" ||
-    match.roster.ownerId === null ||
-    (user?.id && match.roster.ownerId === user.id);
-
-  if (!canAccessMatch) {
-    return <div className="page-container"><p>Partita non trovata</p></div>;
-  }
 
   const ourGoals = match.events.filter((event) => event.type === "GOAL").length;
   const opponentGoals = match.events.filter((event) => event.type === "OPPONENT_GOAL").length;
